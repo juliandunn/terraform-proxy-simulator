@@ -55,6 +55,11 @@ resource "aws_route_table_association" "proxy-vpc-public-routing" {
     route_table_id = "${aws_route_table.proxy-vpc-outbound.id}"
 }
 
+resource "aws_route_table_association" "proxy-vpc-private-routing" {
+    subnet_id = "${aws_subnet.proxy-vpc-private-subnet.id}"
+    route_table_id = "${aws_route_table.proxy-vpc-outbound.id}"
+}
+
 # Only allow the public subnet group to access ports 80 and 443
 resource "aws_security_group" "proxy-vpc-public-subnet-sg" {
     name = "proxy-vpc-public-subnet-sg"
@@ -87,6 +92,15 @@ resource "aws_security_group_rule" "proxy-vpc-public-subnet-ingress-ssh" {
     protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
     security_group_id = "${aws_security_group.proxy-vpc-public-subnet-sg.id}"
+}
+
+resource "aws_security_group_rule" "proxy-vpc-public-subnet-ingress-squid" {
+    type = "ingress"
+    from_port = 3128
+    to_port = 3128
+    protocol = "tcp"
+    security_group_id = "${aws_security_group.proxy-vpc-public-subnet-sg.id}"
+    source_security_group_id = "${aws_security_group.proxy-vpc-private-subnet-sg.id}"
 }
 
 # Private subnet SG
@@ -130,7 +144,7 @@ data "aws_ami" "fedora" {
 
 # Script to install Squid and configure it properly
 data "template_file" "install-squid" {
-    template = "install-squid.sh.tpl"
+    template = "${file("install-squid.sh.tpl")}"
 }
 
 resource "aws_instance" "proxy-server" {
@@ -143,6 +157,18 @@ resource "aws_instance" "proxy-server" {
     subnet_id = "${aws_subnet.proxy-vpc-public-subnet.id}"
     vpc_security_group_ids = ["${aws_security_group.proxy-vpc-public-subnet-sg.id}"]
     user_data = "${data.template_file.install-squid.rendered}"
+}
+
+resource "aws_instance" "private-test-box" {
+    ami = "${data.aws_ami.fedora.id}"
+    instance_type = "${var.instance_size}"
+    tags {
+        Name = "proxy test box inside private subnet"
+    }
+    key_name = "${lookup(var.keys, var.region)}"
+    subnet_id = "${aws_subnet.proxy-vpc-private-subnet.id}"
+    vpc_security_group_ids = ["${aws_security_group.proxy-vpc-private-subnet-sg.id}"]
+    associate_public_ip_address = "true"
 }
 
 output "proxy" {
