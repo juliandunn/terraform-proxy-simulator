@@ -113,3 +113,28 @@ resource "aws_security_group_rule" "proxy-vpc-private-subnet-ingress-ssh" {
     cidr_blocks = ["0.0.0.0/0"]
     security_group_id = "${aws_security_group.proxy-vpc-private-subnet-sg.id}"
 }
+
+# The proxy server
+data "aws_ami" "fedora" {
+  most_recent = true
+  filter {
+    name = "name"
+    values = ["Fedora-Cloud-Base-25-*-HVM-standard-0"]
+  }
+  filter {
+    name = "virtualization-type"
+    values = ["hvm"]
+  }
+  owners = ["125523088429"] # Fedora
+}
+
+resource "aws_instance" "proxy-server" {
+    ami = "${data.aws_ami.fedora.id}"
+    instance_type = "${var.instance_size}"
+    tags {
+        Name = "proxy server"
+    }
+    key_name = "${lookup(var.keys, var.region)}"
+    subnet_id = "${aws_subnet.proxy-vpc-public-subnet.id}"
+    vpc_security_group_ids = ["${aws_security_group.proxy-vpc-public-subnet-sg.id}"]
+}
