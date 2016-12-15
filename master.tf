@@ -56,67 +56,60 @@ resource "aws_route_table_association" "proxy-vpc-public-routing" {
 }
 
 # Only allow the public subnet group to access ports 80 and 443
-resource "aws_security_group" "proxy-vpc-egress-sg" {
-    name = "proxy-vpc-egress-sg"
-    description = "Egress rules from public subnet - HTTP and HTTPS only"
+resource "aws_security_group" "proxy-vpc-public-subnet-sg" {
+    name = "proxy-vpc-public-subnet-sg"
+    description = "Ingress and egress rules for public subnet"
     vpc_id = "${aws_vpc.proxy-vpc.id}"
 }
 
-resource "aws_security_group_rule" "public-subnet-egress-http" {
+resource "aws_security_group_rule" "proxy-vpc-public-subnet-egress-http" {
     type = "egress"
     from_port = 80
     to_port = 80
     protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    security_group_id = "${aws_security_group.proxy-vpc-egress-sg.id}"
+    security_group_id = "${aws_security_group.proxy-vpc-public-subnet-sg.id}"
 }
 
-resource "aws_security_group_rule" "public-subnet-egress-https" {
+resource "aws_security_group_rule" "proxy-vpc-public-subnet-egress-https" {
     type = "egress"
     from_port = 443
     to_port = 443
     protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    security_group_id = "${aws_security_group.proxy-vpc-egress-sg.id}"
+    security_group_id = "${aws_security_group.proxy-vpc-public-subnet-sg.id}"
 }
 
-resource "aws_security_group_rule" "public-subnet-egress-squid" {
-    type = "egress"
-    from_port = 3128
-    to_port = 3128
-    protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    security_group_id = "${aws_security_group.proxy-vpc-egress-sg.id}"
-}
-
-# Create a security group that allows us to directly SSH to any instance
-resource "aws_security_group" "proxy-vpc-ingress-ssh-sg" {
-    name = "proxy-vpc-ingress-ssh-sg"
-    description = "Ingress rules from anywhere - SSH only"
-    vpc_id = "${aws_vpc.proxy-vpc.id}"
-}
-
-resource "aws_security_group_rule" "proxy-vpc-ingress-ssh" {
+resource "aws_security_group_rule" "proxy-vpc-public-subnet-ingress-ssh" {
     type = "ingress"
     from_port = 22
     to_port = 22
     protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    security_group_id = "${aws_security_group.proxy-vpc-ingress-ssh-sg.id}"
+    security_group_id = "${aws_security_group.proxy-vpc-public-subnet-sg.id}"
 }
 
-# Group to allow ingress from the machines SG to the proxy SG
-resource "aws_security_group" "proxy-vpc-proxied-sources-sg" {
-    name = "proxy-vpc-proxied-sources-sg"
-    description = "Allow egress from this SG to the proxy-vpc-egress-sg"
+# Private subnet SG
+resource "aws_security_group" "proxy-vpc-private-subnet-sg" {
+    name = "proxy-vpc-private-subnet-sg"
+    description = "Private subnet rules"
     vpc_id = "${aws_vpc.proxy-vpc.id}"
 }
 
-resource "aws_security_group_rule" "private-subnet-egress-squid" {
+resource "aws_security_group_rule" "proxy-vpc-private-subnet-egress-squid" {
     type = "egress"
     from_port = 3128
     to_port = 3128
     protocol = "tcp"
-    security_group_id = "${aws_security_group.proxy-vpc-egress-sg.id}"
-    source_security_group_id = "${aws_security_group.proxy-vpc-proxied-sources-sg.id}"
+    security_group_id = "${aws_security_group.proxy-vpc-private-subnet-sg.id}"
+    source_security_group_id = "${aws_security_group.proxy-vpc-public-subnet-sg.id}"
+}
+
+resource "aws_security_group_rule" "proxy-vpc-private-subnet-ingress-ssh" {
+    type = "ingress"
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    security_group_id = "${aws_security_group.proxy-vpc-private-subnet-sg.id}"
 }
