@@ -128,6 +128,11 @@ data "aws_ami" "fedora" {
   owners = ["125523088429"] # Fedora
 }
 
+# Script to install Squid and configure it properly
+data "template_file" "install-squid" {
+    template = "install-squid.sh.tpl"
+}
+
 resource "aws_instance" "proxy-server" {
     ami = "${data.aws_ami.fedora.id}"
     instance_type = "${var.instance_size}"
@@ -137,4 +142,9 @@ resource "aws_instance" "proxy-server" {
     key_name = "${lookup(var.keys, var.region)}"
     subnet_id = "${aws_subnet.proxy-vpc-public-subnet.id}"
     vpc_security_group_ids = ["${aws_security_group.proxy-vpc-public-subnet-sg.id}"]
+    user_data = "${data.template_file.install-squid.rendered}"
+}
+
+output "proxy" {
+    value = "${aws_instance.proxy-server.dns_name}"
 }
