@@ -1,9 +1,77 @@
-# Proxy Simulator VPC
+# Proxy Simulator VPC in Terraform
 
-This Terraform setup sets up a VPC with two subnets, one of which has a route
-to the Internet, and the other which does not, only a route to the public
-subnet.
+It's often hard to simulate enterprise customers' complex proxy environments
+for the purposes of debugging issues. This is a Terraform template that serves
+to ease that burden, by setting up a fresh VPC with two subnets:
+ 
+* 192.168.16.0/25 as a public subnet
+* 192.168.16.128/25 as a private subnet
 
-Inside the public subnet there is a proxy server set up running Squid.
+Network access control rules are further set up as follows:
 
-This harness is useful for testing out customer scenarios with proxies.
+* Egress to port 80/443 on the Internet is permitted from the public subnet
+* Traffic on port 3128 between the public and private subnet is permitted
+* No other traffic is permitted out of the private subnet
+
+For convenience reasons, we allow direct SSH to instances on both the public
+and private subnets (so that you can get to the boxes from your laptop
+without a bastion host).
+
+## Machines
+
+The Terraform template will set up two machines for you:
+
+* One in the public subnet, with Squid running on port 3128
+* One in the private subnet which you can use as a ChefDK workstation
+  (ChefDK isn't installed though; you'll need to do that yourself)
+
+You'll need to export your `HTTP_PROXY`, `HTTPS_PROXY`, etc. on the
+workstation. It's alright to export them to the "ec2-xx-yy-zz-aa.amazonaws.com"
+hostname because that will resolve to the private network inside AWS, and
+to the public IP outside AWS.
+
+## Use Cases
+
+You can use this set up for a few use cases:
+
+* Use `kitchen-ec2` driver to create machines in the private subnet and force
+  outgoing connections through the proxy. You'll drive `kitchen` from your
+  laptop, though.
+* Use the Ubuntu ChefDK workstation to run `kitchen` directly.
+* Any other use case you can think of that requires simulating proxies --
+  create additional machines manually inside the private subnet as needed.
+
+## Tips and Tricks
+
+### .kitchen.yml settings for working with proxies using the `kitchen-ec2` driver
+
+```yaml
+---
+driver:
+  name: ec2
+  security_group_ids: [ sg-deadbeef ]  # put the private security group here
+  subnet_id: subnet-deadbeef # put the private subnet here
+  aws_ssh_key_id: yourkey
+  driver_config:
+    http_proxy: http://ec2-xx-yy-zz-aa.compute-1.amazonaws.com:3128
+    https_proxy: http://ec2-xx-yy-zz-aa.compute-1.amazonaws.com:3128
+
+provisioner:
+  name: chef_zero
+  http_proxy: http://ec2-xx-yy-zz-aa.compute-1.amazonaws.com:3128
+  https_proxy: http://ec2-xx-yy-zz-aa.compute-1.amazonaws.com:3128
+```
+
+(derived from Jeff Blaine's [excellent blog post](http://www.kickflop.net/blog/2015/10/28/using-test-kitchen-and-kitchen-vagrant-behind-an-http-proxy/))
+
+### apt-get settings on the private workstation for installing things via proxy
+
+Put the following in `/etc/apt/apt.conf` before `apt-get install` anything
+
+```
+Acquire::http::Proxy "http://ec2-xx-yy-zz-aa.compute-1.amazonaws.com:3128";
+```
+
+## Author
+
+* Julian C. Dunn (<jdunn@chef.io>)
