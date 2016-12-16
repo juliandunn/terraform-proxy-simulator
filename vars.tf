@@ -11,6 +11,10 @@ variable "keys" {
     }
 }
 
-variable "instance_size" {
+variable "proxy_instance_size" {
     default = "t2.small"
+}
+
+variable "workstation_instance_size" {
+    default = "t2.micro"
 }

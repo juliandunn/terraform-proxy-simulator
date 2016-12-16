@@ -167,7 +167,7 @@ data "template_file" "install-squid" {
 
 resource "aws_instance" "proxy-server" {
     ami = "${data.aws_ami.fedora.id}"
-    instance_type = "${var.instance_size}"
+    instance_type = "${var.proxy_instance_size}"
     tags {
         Name = "proxy server"
     }
@@ -183,7 +183,7 @@ data "aws_ami" "ubuntu" {
   most_recent = true
   filter {
     name = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-trusty-14.04-amd64-server-*"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-*"]
   }
   filter {
     name = "virtualization-type"
@@ -192,18 +192,31 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"] # Canonical
 }
 
+data "template_file" "proxy-setup" {
+    template = "${file("proxy-setup.sh.tpl")}"
+
+    vars {
+        proxy_server = "${aws_instance.proxy-server.private_dns}"
+    }
+}
+
 resource "aws_instance" "private-test-box" {
     ami = "${data.aws_ami.ubuntu.id}"
-    instance_type = "${var.instance_size}"
+    instance_type = "${var.workstation_instance_size}"
     tags {
-        Name = "proxy test box inside private subnet"
+        Name = "workstation inside private subnet"
     }
     key_name = "${lookup(var.keys, var.region)}"
     subnet_id = "${aws_subnet.proxy-vpc-private-subnet.id}"
     vpc_security_group_ids = ["${aws_security_group.proxy-vpc-private-subnet-sg.id}"]
     associate_public_ip_address = "true"
+    user_data = "${data.template_file.proxy-setup.rendered}"
 }
 
 output "proxy" {
-    value = "${aws_instance.proxy-server.dns_name}"
+    value = "${aws_instance.proxy-server.public_dns}"
+}
+
+output "workstation" {
+    value = "${aws_instance.private-test-box.public_dns}"
 }
