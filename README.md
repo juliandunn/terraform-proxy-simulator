@@ -14,8 +14,7 @@ Network access control rules are further set up as follows:
 * No other traffic is permitted out of the private subnet
 
 For convenience reasons, we allow direct SSH to instances on both the public
-and private subnets (so that you can get to the boxes from your laptop
-without a bastion host).
+and private subnets.
 
 ## Machines
 
@@ -25,20 +24,19 @@ The Terraform template will set up two machines for you:
 * One in the private subnet which you can use as a ChefDK workstation
   (ChefDK isn't installed though; you'll need to do that yourself)
 
-You'll need to export your `HTTP_PROXY`, `HTTPS_PROXY`, etc. on the
-workstation. It's alright to export them to the "ec2-xx-yy-zz-aa.amazonaws.com"
-hostname because that will resolve to the private network inside AWS, and
-to the public IP outside AWS.
+On the workstation, a .bash_profile will be written out with the correct
+`HTTP_PROXY`, `HTTPS_PROXY`, etc. environment variables already set up.
 
 ## Use Cases
 
-You can use this set up for a few use cases:
+You can use this setup for a few use cases:
 
-* Use `kitchen-ec2` driver to create machines in the private subnet and force
-  outgoing connections through the proxy. You'll drive `kitchen` from your
-  laptop, though.
+* Use `kitchen` on your laptop and use the `kitchen-ec2 driver to create
+  machines in the private subnet, forcing outgoing connections from Test
+  Kitchen through the proxy. (In this case you won't use the ChefDK
+  workstation)
 * Use the Ubuntu ChefDK workstation to run `kitchen` directly.
-* Any other use case you can think of that requires simulating proxies --
+* Any other situation you can think of that requires simulating proxies --
   create additional machines manually inside the private subnet as needed.
 
 ## Tips and Tricks
