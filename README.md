@@ -14,7 +14,8 @@ Network access control rules are further set up as follows:
 * No other traffic is permitted out of the private subnet
 
 For convenience reasons, we allow direct SSH to instances on both the public
-and private subnets.
+and private subnets, assuming you have a public IP associated to the
+instance.
 
 ## Machines
 
@@ -31,11 +32,15 @@ On the workstation, a .bash_profile will be written out with the correct
 
 You can use this setup for a few use cases:
 
-* Use `kitchen` on your laptop and use the `kitchen-ec2 driver to create
+* Use `kitchen` on your laptop and use the `kitchen-ec2` driver to create
   machines in the private subnet, forcing outgoing connections from Test
-  Kitchen through the proxy. (In this case you won't use the ChefDK
-  workstation)
-* Use the Ubuntu ChefDK workstation to run `kitchen` directly.
+  Kitchen through the proxy. In this case you won't use the ChefDK
+  workstation at all, but you'll need to make sure you set up your
+  `.kitchen.yml` to stand up the test machines with public IPs so that
+  you can get to them from your laptop. (`associate_public_ip` directive)
+* Use the Ubuntu ChefDK workstation to run `kitchen` directly. In this
+  situation you don't need to have `.kitchen.yml` give the test machines
+  public IPs since you'll be connecting to them entirely within EC2.
 * Any other situation you can think of that requires simulating proxies --
   create additional machines manually inside the private subnet as needed.
 
@@ -64,7 +69,10 @@ provisioner:
   https_proxy: http://ec2-xx-yy-zz-aa.compute-1.amazonaws.com:3128
 ```
 
-(derived from Jeff Blaine's [excellent blog post](http://www.kickflop.net/blog/2015/10/28/using-test-kitchen-and-kitchen-vagrant-behind-an-http-proxy/))
+These were derived from Jeff Blaine's [excellent blog post](http://www.kickflop.net/blog/2015/10/28/using-test-kitchen-and-kitchen-vagrant-behind-an-http-proxy/). If you need to run the `chef-client`
+cookbook on a node and want to have it talk to Hosted Chef or AWS Opsworks or
+whatever, you'll want to read Jeff's post on how to add the proxy attributes to
+`client.rb`.
 
 ### apt-get settings on the private workstation for installing things via proxy
 
