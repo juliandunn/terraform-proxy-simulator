@@ -41,6 +41,10 @@ You can use this setup for a few use cases:
 
 ## Tips and Tricks
 
+### I forgot the hostnames of the proxy server and/or workstation
+
+Run `terraform output` and it'll print them out for you.
+
 ### .kitchen.yml settings for working with proxies using the `kitchen-ec2` driver
 
 ```yaml
@@ -69,6 +73,17 @@ Put the following in `/etc/apt/apt.conf` before `apt-get install` anything
 ```
 Acquire::http::Proxy "http://ec2-xx-yy-zz-aa.compute-1.amazonaws.com:3128";
 ```
+
+## using the proxy server from outside EC2
+
+You can also use that proxy server from outside EC2 if you adjust the firewall
+rules on the security group. You'll also need to update Squid's config
+to allow access from your outgoing IP (it's a bad idea to allow the whole
+world to access the Squid server 'cause that's a sure way to a) get DDoSsed
+and b) have Amazon shut down your account :) )
+
+After you do this you can set `HTTP_PROXY` and so on, on your laptop to
+the proxy server's external IP.
 
 ## Author
 
