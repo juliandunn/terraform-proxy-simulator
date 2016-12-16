@@ -128,6 +128,24 @@ resource "aws_security_group_rule" "proxy-vpc-private-subnet-ingress-ssh" {
     security_group_id = "${aws_security_group.proxy-vpc-private-subnet-sg.id}"
 }
 
+resource "aws_security_group_rule" "proxy-vpc-private-subnet-ingress-self-ssh" {
+    type = "ingress"
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    self = "true"
+    security_group_id = "${aws_security_group.proxy-vpc-private-subnet-sg.id}"
+}
+
+resource "aws_security_group_rule" "proxy-vpc-private-subnet-egress-self-ssh" {
+    type = "egress"
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    self = "true"
+    security_group_id = "${aws_security_group.proxy-vpc-private-subnet-sg.id}"
+}
+
 # The proxy server
 data "aws_ami" "fedora" {
   most_recent = true
@@ -159,8 +177,23 @@ resource "aws_instance" "proxy-server" {
     user_data = "${data.template_file.install-squid.rendered}"
 }
 
+# Make it so the test box in the private subnet is Ubuntu
+# so we can install ChefDK on it
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  filter {
+    name = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-trusty-14.04-amd64-server-*"]
+  }
+  filter {
+    name = "virtualization-type"
+    values = ["hvm"]
+  }
+  owners = ["099720109477"] # Canonical
+}
+
 resource "aws_instance" "private-test-box" {
-    ami = "${data.aws_ami.fedora.id}"
+    ami = "${data.aws_ami.ubuntu.id}"
     instance_type = "${var.instance_size}"
     tags {
         Name = "proxy test box inside private subnet"
